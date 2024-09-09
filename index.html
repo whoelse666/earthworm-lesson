@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Process English Sentences</title>
+<style>
+#drop-area {
+    border: 2px dashed #ccc;
+    border-radius: 20px;
+    width: 480px;
+    padding: 20px;
+    text-align: center;
+    margin: 20px auto;
+}
+#drop-area.highlight {
+    border-color: purple;
+}
+</style>
+</head>
+<body>
+<div id="drop-area">
+    <p>拖拽TXT文件到这里或点击选择文件</p>
+    <input type="file" id="fileElem" accept=".txt" style="display:none">
+    <button id="fileSelect">选择文件</button>
+</div>
+
+<script>
+    let dropArea = document.getElementById('drop-area');
+    let fileElem = document.getElementById('fileElem');
+    let fileSelect = document.getElementById('fileSelect');
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropArea.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropArea.addEventListener(eventName, highlight, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropArea.addEventListener(eventName, unhighlight, false);
+    });
+
+    function highlight(e) {
+        dropArea.classList.add('highlight');
+    }
+
+    function unhighlight(e) {
+        dropArea.classList.remove('highlight');
+    }
+
+    dropArea.addEventListener('drop', handleDrop, false);
+    fileSelect.addEventListener('click', () => fileElem.click(), false);
+    fileElem.addEventListener('change', handleFiles, false);
+
+    function handleDrop(e) {
+        let dt = e.dataTransfer;
+        let files = dt.files;
+        handleFiles(files);
+    }
+
+    function handleFiles(files) {
+        if (files instanceof FileList) {
+            ([...files]).forEach(processFile);
+        } else if (files.target && files.target.files) {
+            ([...files.target.files]).forEach(processFile);
+        }
+    }
+
+    function processFile(file) {
+        let reader = new FileReader();
+        reader.onload = function(e) {
+            let content = e.target.result;
+            let lines = content.split('\n');
+            let uniqueEnglishSentences = [...new Set(lines
+                .map(line => line.trim())
+                .filter(line => line && !/[\u4e00-\u9fa5]/.test(line))
+            )];
+            let output = uniqueEnglishSentences.join('\n');
+            downloadFile(output, 'processed_' + file.name);
+        };
+        reader.readAsText(file);
+    }
+
+    function downloadFile(content, fileName) {
+        let blob = new Blob([content], { type: 'text/plain' });
+        let url = window.URL.createObjectURL(blob);
+        let a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+    }
+</script>
+</body>
+</html>
